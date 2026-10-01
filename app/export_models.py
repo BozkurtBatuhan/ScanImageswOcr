@@ -1,10 +1,3 @@
-"""Resmi PP-OCR modellerini indirip ONNX'e çevirir: <hedef>/<model>/{inference.onnx, config.json}.
-
-Yalnızca build/geliştirme aracı (paddlepaddle, paddlex, paddle2onnx gerektirir: requirements-export.txt).
-Çalışma zamanı bu paketlere ihtiyaç duymaz; app/ocr.py yalnızca onnxruntime + OpenCV kullanır.
-config.json, modelin inference.yml'ından ön/son işleme için gereken değerleri taşır.
-
-Kullanım: python -m app.export_models [hedef_klasör] [model ...]"""
 from __future__ import annotations
 
 import json
@@ -18,7 +11,6 @@ def model_config(cfg: dict) -> dict:
     post = cfg["PostProcess"]
     ops = {k: v for op in cfg["PreProcess"]["transform_ops"] for k, v in op.items()}
     if post["name"] == "DBPostProcess":
-        # app/ocr.py yalnızca varsayılan DB ayarlarını uygular (dilation yok, fast skor, quad kutu)
         assert not post.get("use_dilation") and post.get("score_mode", "fast") == "fast" \
             and post.get("box_type", "quad") == "quad", post
         norm = ops["NormalizeImage"]

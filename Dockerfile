@@ -1,6 +1,3 @@
-# 1) Model aşaması: resmi PP-OCR modellerini indirip ONNX'e çevirir (paddle yalnızca burada).
-# Her zaman amd64: paddle2onnx bağımlılıklarının (onnxoptimizer) arm64 Linux paketi yok. ONNX dosyaları
-# mimariden bağımsız, çalışma imajı hedef mimaride (x86 / Graviton) kurulur.
 FROM --platform=linux/amd64 python:3.11-slim AS models
 
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
@@ -10,7 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-export.txt
 COPY app ./app
 RUN python -m app.export_models /models
 
-# 2) Çalışma aşaması: yalnızca onnxruntime + OpenCV.
 FROM python:3.11-slim
 
 WORKDIR /srv
@@ -21,11 +17,8 @@ COPY app ./app
 COPY scan.py .
 COPY --from=models /models ./models
 
-# Modellerin yüklendiğini build sırasında doğrular.
 RUN python -c "from app.ocr import OCR; OCR()"
 
-# Worker sayısı verilmezse çekirdek sayısı / OCR_CPU_THREADS (en az 1). CPU limiti olan ortamlarda
-# (K8s) nproc makinenin tüm çekirdeklerini görebilir; orada WEB_CONCURRENCY'yi açıkça verin.
 ENV OCR_CPU_THREADS=4
 
 EXPOSE 8000

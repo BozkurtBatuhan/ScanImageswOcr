@@ -1,4 +1,3 @@
-"""Görüntü yardımcıları: yükleme, ölçekleme, düzleştirerek kırpma ve okuma öncesi görünüm dönüşümleri."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,7 +19,6 @@ def scale_to(img, side: int):
 
 
 def crop(img, poly) -> np.ndarray:
-    """Dörtgen kutuyu düzleştirerek kırpar (eğik yazı da yatay hale gelir)."""
     poly = np.asarray(poly, dtype=np.float32)
     w = int(max(np.linalg.norm(poly[0] - poly[1]), np.linalg.norm(poly[2] - poly[3])))
     h = int(max(np.linalg.norm(poly[0] - poly[3]), np.linalg.norm(poly[1] - poly[2])))
@@ -37,7 +35,6 @@ def clahe(img):
 
 
 def invert_otsu(img):
-    """İkili + ters: renkli rozet/daire içindeki açık renkli rakamları koyu-üstü-açık yazıya çevirir."""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return cv2.cvtColor(255 - bw, cv2.COLOR_GRAY2BGR)

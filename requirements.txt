@@ -1,4 +1,3 @@
-# Çalışma zamanı (servis/CLI). Paddle gerekmez; modeller build'de ONNX'e çevrilir (requirements-export.txt).
 fastapi==0.141.1
 uvicorn==0.53.0
 python-multipart==0.0.32

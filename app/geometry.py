@@ -1,14 +1,11 @@
-"""Kutu/bölge geometrisi: satır gruplama, ilgi bölgesi (ROI) çıkarma, çakışma ölçme ve bölge birleştirme."""
 from __future__ import annotations
 
 import numpy as np
 
-Rect = tuple[int, int, int, int, bool]  # x0, y0, x1, y1, bölgede emin olunmayan okuma var mı
+Rect = tuple[int, int, int, int, bool]
 
 
 def lines_of(polys: list[np.ndarray]) -> list[list[int]]:
-    """Kutuları satırlara böler, satır içinde soldan sağa sıralar. Aynı satırda olup arası
-    açık kutular (> 2 yazı yüksekliği) ayrı satır sayılır: yalnızca yan yana parçalar birleşsin."""
     if not polys:
         return []
     ys = [p[:, 1].mean() for p in polys]
@@ -33,7 +30,6 @@ def joined(texts: list[str], lines: list[list[int]]) -> str:
 
 
 def roi(polys: list[np.ndarray], idx: list[int], shape, mx: float = 4, my: float = 3) -> tuple[int, int, int, int]:
-    """Şüpheli kutuları kapsayan bölge, çevresiyle birlikte (numara genelde ipucu yazısının hemen altında/üstünde)."""
     pts = np.concatenate([polys[i] for i in idx])
     h = max(np.median([np.ptp(polys[i][:, 1]) for i in idx]), 8)
     x0, y0 = pts.min(0) - [mx * h, my * h]
@@ -43,7 +39,6 @@ def roi(polys: list[np.ndarray], idx: list[int], shape, mx: float = 4, my: float
 
 
 def iou(a: np.ndarray, b: np.ndarray) -> float:
-    """İki kutunun eksen hizalı çerçevelerinin kesişim / birleşim oranı."""
     (ax0, ay0), (ax1, ay1) = a.min(0), a.max(0)
     (bx0, by0), (bx1, by1) = b.min(0), b.max(0)
     inter = max(0, min(ax1, bx1) - max(ax0, bx0)) * max(0, min(ay1, by1) - max(ay0, by0))
@@ -52,7 +47,6 @@ def iou(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def merge(rects: list[Rect]) -> list[Rect]:
-    """Çakışan bölgeleri birleştirir (aynı yere iki kez bakılmasın); son alan: bölgede emin olunmayan okuma var."""
     out: list[list] = []
     for r in sorted(rects):
         for m in out:

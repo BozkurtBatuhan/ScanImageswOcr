@@ -36,8 +36,6 @@ class Result:
 
 def zoom_regions(polys: list[np.ndarray], texts: list[str], unsure: set[int], faint: list[np.ndarray], shape,
                  det_scale: float) -> list[Rect]:
-    """Z kademesinin yeniden bakacağı bölgeler (bkz. modül açıklaması). det_scale: src -> tespit girdisi.
-    Yatay pay geniş (ZOOM_MX yazı yüksekliği): parçanın devamı numaranın geri kalanıdır."""
     seeds = [i for i, (p, t) in enumerate(zip(polys, texts))
              if i in unsure or fragment(t)
              or (np.ptp(p[:, 1]) * det_scale < SMALL_TEXT_PX and any(c.isdigit() for c in normalize(t)))]
@@ -70,17 +68,24 @@ def scan(img, ocr: OCR, deadline_ms: int = DEADLINE_MS) -> Result:
         return r
 
     def detect_read(base, fn, side: int) -> list[str]:
-        """fn(base) görünümünde tespit; kutular hem görünümden hem ham görselden okunur
-        (ikili görünüm tespiti kolaylaştırır ama okumayı bazen bozar). fn=None: yalnızca ham görsel."""
         polys = ocr.detect(fn(base) if fn else base, side=side)
         if not polys:
             return []
         raw = [crop(base, p) for p in polys]
         ln = lines_of(polys)
-        out = extract(joined([t for t, _ in ocr.read(raw)], ln))[0]
+        reads = ocr.read(raw)
+        texts = [t for t, _ in reads]
+        out = extract(joined(texts, ln))[0]
         if out or fn is None:
             return out
-        return extract(joined([t for t, _ in ocr.read([fn(c) for c in raw])], ln))[0]
+        # Filtreli görünümden yalnızca belirsiz ya da rakamlı kutular yeniden okunur; güvenle okunmuş
+        # rakamsız kutunun (ör. "SATILIK", "12") filtreli okuması aynı ya da daha kötü çıkıyor.
+        redo = [i for i, (t, sc) in enumerate(reads) if sc < UNSURE_SCORE or digitish(t)]
+        if not redo:
+            return []
+        for i, (t, _) in zip(redo, ocr.read([fn(raw[i]) for i in redo])):
+            texts[i] = t
+        return extract(joined(texts, ln))[0]
 
     native = max(img.shape[:2])
     src, _ = scale_to(img, min(max(native, DET_SIDE), CROP_SIDE))
@@ -93,8 +98,6 @@ def scan(img, ocr: OCR, deadline_ms: int = DEADLINE_MS) -> Result:
     texts = [t for t, _ in reads]
     lines = lines_of(polys)
     held, strong = extract(joined(texts, lines))
-    # Düşük güvenli rakam kutusu (çoğunlukla iki satırın tek kutuda birleşmesi) numara sayılmaz, Z'de
-    # yakından yeniden okunur; orada da bir şey çıkmazsa ilk okuma geri alınır (recall düşmesin).
     unsure = {i for i, (t, sc) in enumerate(reads) if sc < UNSURE_SCORE and digitish(t)}
     phones = extract(joined(["" if i in unsure else t for i, t in enumerate(texts)], lines))[0] if unsure else held
     held = [p for p in held if p not in phones]
@@ -123,7 +126,6 @@ def scan(img, ocr: OCR, deadline_ms: int = DEADLINE_MS) -> Result:
     can_hi = HI_SIDE > 0 and hi > 1.3 * side
 
     def hi_pass() -> list[str]:
-        """src'de hi çözünürlükte tespit. A'da güvenle okunmuş kutuyla örtüşen kutular yeniden okunmaz."""
         hp = ocr.detect(src, side=hi)
         ht: list[str | None] = [None] * len(hp)
         for j, p in enumerate(hp):

@@ -1,5 +1,3 @@
-"""Türkçe metin normalizasyonu: OCR çıktısındaki harf/rakam karışıklıklarını ve
-yazıyla yazılmış sayıları ('sıfır beş yüz otuz iki') rakama çevirir."""
 from __future__ import annotations
 
 import re
@@ -25,14 +23,12 @@ def fold(s: str) -> str:
 
 
 def unify_digits(text: str) -> str:
-    """Daire içi/tam genişlik/dingbat rakamları (⑤, ０, ❺, ➄) ASCII rakama çevirir."""
     text = unicodedata.normalize("NFKC", text.translate(_CIRCLED_TEN))
     return "".join(str(unicodedata.digit(c)) if not c.isascii() and unicodedata.digit(c, None) is not None
                    else c for c in text)
 
 
 def fix_lookalikes(text: str) -> str:
-    """Rakam görünümlü koşularda O->0, l->1, S->5 gibi OCR hatalarını düzeltir."""
     def repl(m: re.Match) -> str:
         run = m.group(0)
         if sum(c.isdigit() for c in run) < 5:
@@ -42,7 +38,6 @@ def fix_lookalikes(text: str) -> str:
 
 
 def split_glued(tok: str) -> list[str] | None:
-    """OCR'ın bitişik okuduğu sayı kelimelerini ayırır: 'yuzotuz' -> ['yuz', 'otuz']. Tamamı ayrılmazsa None."""
     if not tok:
         return []
     for w in _NUM_WORDS:
@@ -52,7 +47,6 @@ def split_glued(tok: str) -> list[str] | None:
 
 
 def words_to_digits(s: str) -> str:
-    """'sıfır beş yüz otuz iki' -> '0 532'. 'beş üç iki' -> '5 3 2'. (s zaten fold edilmiş olmalı)"""
     out: list[str] = []
     h = t = 0
     u: int | None = None

@@ -1,5 +1,3 @@
-"""Metin tespiti son işleme: DB (Differentiable Binarization) olasılık haritasından metin dörtgenleri.
-PaddleX'in DetResizeForTest ve DBPostProcess işlemcilerinin birebir karşılığıdır."""
 from __future__ import annotations
 
 import math
@@ -10,8 +8,6 @@ import pyclipper
 
 
 def det_resize(img, side: int):
-    """DetResizeForTest (limit_type=max): uzun kenar en çok side, iki kenar da 32'nin katı.
-    Dönen (h, w) dolgusuz asıl boyut: kutular ona ölçeklenir."""
     src = img.shape[:2]
     if sum(src) < 64:
         pad = np.zeros((max(32, src[0]), max(32, src[1]), 3), np.uint8)
@@ -25,7 +21,6 @@ def det_resize(img, side: int):
 
 
 def mini_box(contour) -> tuple[np.ndarray, float]:
-    """En küçük döndürülmüş dikdörtgen; köşeler sol-üst, sağ-üst, sağ-alt, sol-alt sırasında."""
     rect = cv2.minAreaRect(contour)
     p = sorted(list(cv2.boxPoints(rect)), key=lambda x: x[0])
     a, d = (0, 1) if p[1][1] > p[0][1] else (1, 0)
@@ -59,7 +54,6 @@ def unclip(box, ratio: float) -> np.ndarray:
 
 def db_boxes(pred, thresh: float, box_thresh: float, unclip_ratio: float, max_candidates: int,
              dest_w: int, dest_h: int) -> list[np.ndarray]:
-    """DBPostProcess (quad, fast skor): olasılık haritasından metin dörtgenleri, dest ölçeğinde."""
     h, w = pred.shape
     sx, sy = dest_w / w, dest_h / h
     contours, _ = cv2.findContours(((pred > thresh) * 255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -80,9 +74,6 @@ def db_boxes(pred, thresh: float, box_thresh: float, unclip_ratio: float, max_ca
 
 
 def faint_boxes(pred, dest_w: int, dest_h: int, lo: float = 0.08, max_h: int = 10) -> list[np.ndarray]:
-    """Tespit modelinin sezdiği ama kutuya çeviremediği yazı izleri: soluk (ortalama < 0.3), alçak
-    (<= max_h px) ve yatay uzun bölgeler. Genelde tespit çözünürlüğünün sınırındaki küçük yazı
-    (büyük fotoğrafın köşesindeki tabela); tarayıcı bu bölgelere yakından yeniden bakar."""
     h, w = pred.shape
     sx, sy = dest_w / w, dest_h / h
     n, lab, stats, _ = cv2.connectedComponentsWithStats((pred > lo).astype(np.uint8))

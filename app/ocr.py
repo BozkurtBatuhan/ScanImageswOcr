@@ -1,9 +1,3 @@
-"""Görsel yükleme ve iki aşamalı OCR: metin kutularını küçük görselde bul (pahalı kısım),
-yazıyı yalnızca bu kutulardan, yüksek çözünürlüklü kırpıntılarla oku (ucuz kısım).
-
-PP-OCR modelleri ONNX Runtime ile doğrudan çalıştırılır; ön/son işleme (DB kutu çıkarma, CTC çözme)
-PaddleX'in işlemcilerinin birebir karşılığıdır, böylece çalışma zamanında paddle/paddlex gerekmez.
-Model dosyaları app/export_models.py ile üretilir: <OCR_MODEL_DIR>/<model>/{inference.onnx, config.json}."""
 from __future__ import annotations
 
 import json
@@ -59,9 +53,6 @@ class OCR:
 
     def detect(self, img, side: int = DET_SIDE, thresh: float = 0.2, box_thresh: float = 0.4,
                faint: bool = False):
-        """Metin kutuları; köşe koordinatları verilen img'nin ölçeğinde. Eşikler varsayılandan
-        (0.3/0.6) düşük: kaçırmamak öncelikli, fazladan kutunun maliyeti yalnızca okuma.
-        faint=True: (kutular, soluk bölgeler) döner; bkz. faint_boxes."""
         small, s = scale_to(img, side)
         x, (h, w) = det_resize(small, side)
         x = (x.astype(np.float32) * self.alpha + self.beta).transpose(2, 0, 1)[None]
@@ -73,7 +64,6 @@ class OCR:
         return boxes, [b.astype(np.float32) / s for b in faint_boxes(pred, w, h)]
 
     def rec_input(self, img) -> np.ndarray:
-        """OCRReisizeNormImg: yükseklik sabit, genişlik en-boy oranıyla (en az rec_w), [-1, 1] aralığı."""
         h, w = img.shape[:2]
         width = int(self.rec_h * max(self.rec_w / self.rec_h, w / h))
         if width > MAX_REC_WIDTH:
@@ -86,7 +76,6 @@ class OCR:
         return out
 
     def decode(self, pred) -> list[tuple[str, float]]:
-        """CTC: tekrarları ve boşluk sınıfını (0) at; skor seçilen karakter olasılıklarının ortalaması."""
         out = []
         for idx, prob in zip(pred.argmax(-1), pred.max(-1)):
             keep = np.ones(len(idx), bool)
@@ -96,7 +85,6 @@ class OCR:
         return out
 
     def read(self, crops: list[np.ndarray]) -> list[tuple[str, float]]:
-        """Kırpıntıları en-boy oranına göre sıralayıp REC_BATCH'lik gruplarla okur (benzer genişlik = az dolgu)."""
         order = sorted(range(len(crops)), key=lambda i: crops[i].shape[1] / crops[i].shape[0])
         out: list[tuple[str, float]] = [("", 0.0)] * len(crops)
         name = self.rec.get_inputs()[0].name

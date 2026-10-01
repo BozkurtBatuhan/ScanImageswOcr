@@ -1,4 +1,3 @@
-"""OCR metninden Türkiye telefon numaralarını çıkarıp standart biçime (05321234567) çevirir."""
 from __future__ import annotations
 
 import re
@@ -22,7 +21,6 @@ HINT_STEMS = ("aray", "numara", "telefon", "iletisim", "whatsap", "watsap", "wp"
 
 
 def classify(d: str) -> str | None:
-    """Rakam dizisini standart numaraya çevirir (cep/sabit: 0XXXXXXXXXX, 444: 444XXXX); telefon değilse None."""
     if 14 <= len(d) <= 24 and len(ms := MULTI.findall(d)) >= 2:
         return ",".join("0" + m[-10:] for m in ms)
     if m := MOBILE_PREFIXED.search(d):
@@ -41,7 +39,6 @@ def classify(d: str) -> str | None:
 
 
 def not_phone(norm: str, m: re.Match, d: str) -> bool:
-    """0/90 ile başlamayan dizi fiyat ya da belge/vergi/ilan no gibi görünüyorsa telefon sayma."""
     if d.startswith(("0", "90")):
         return False
     return bool(NON_PHONE_CTX.search(norm[max(m.start() - 30, 0):m.start()])
@@ -49,8 +46,6 @@ def not_phone(norm: str, m: re.Match, d: str) -> bool:
 
 
 def extract(text: str) -> tuple[list[str], bool]:
-    """(bulunan numaralar, şüpheli mi). Şüpheli: numaraya benzeyen dizi/ipucu kelime var ama numara yok.
-    text: satırları \n ile ayrılmış OCR metni; numara satır sınırını aşmaz."""
     norm = "\n".join(normalize(line) for line in text.split("\n"))
     found: list[str] = []
     near = False
@@ -74,11 +69,9 @@ def extract(text: str) -> tuple[list[str], bool]:
 
 
 def digitish(text: str) -> bool:
-    """Kutu yeniden okunmaya değer mi: rakam (ya da rakama benzeyen daire içi vb.) içeriyor."""
     return sum(c.isdigit() for c in normalize(text)) >= 3
 
 
 def fragment(text: str) -> bool:
-    """Numaranın başı gibi görünen ama tek başına numara olmayan parça: '0212', '0532 12', '+90 5'."""
     d = re.sub(r"\D", "", normalize(text))
     return 3 <= len(d) <= 9 and d.startswith(("0", "5", "90")) and not extract(text)[0]

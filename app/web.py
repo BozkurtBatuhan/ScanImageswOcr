@@ -1,12 +1,3 @@
-"""FastAPI uygulaması: fotoğraf yükleme + telefon numarası tespiti.
-
-Her uvicorn worker'ı (ayrı süreç) kendi OCR örneğini yükler ve aynı anda tek görsel tarar;
-eşzamanlılık worker sayısıyla (WEB_CONCURRENCY / --workers) ölçeklenir.
-
-/api/scan-listing bir ilanın fotoğraflarını sırayla tarar, ilk numarada durur.
-
-Koruma: OCR_MAX_MB'den büyük dosya taranmaz (413 / dosya bazında hata). Worker'ın tarayıcısı
-OCR_QUEUE_TIMEOUT_S içinde boşalmazsa 503 + Retry-After döner (yük dengeleyici başka worker'a yönlendirsin)."""
 from __future__ import annotations
 
 import asyncio
@@ -82,8 +73,6 @@ async def scan_upload(file: UploadFile = File(...)) -> dict:
 
 @app.post("/api/scan-listing")
 async def scan_listing(files: list[UploadFile] = File(...)) -> dict:
-    """Bir ilanın fotoğrafları, gönderilen sırayla. İlk numara bulunan fotoğrafta durur;
-    kalanlar taranmaz ("skipped")."""
     t0 = time.perf_counter()
     results: list[dict] = []
     hit: dict | None = None
@@ -112,7 +101,6 @@ async def scan_listing(files: list[UploadFile] = File(...)) -> dict:
 
 @app.get("/health")
 def health():
-    """Yük dengeleyici kontrolü: model yüklendiyse 200."""
     if ocr is None:
         return JSONResponse({"status": "loading"}, status_code=503)
     return {"status": "ok"}
