@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>İlan Görsellerinden Telefon Numarası Kontrol</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #111827; --muted: #6b7280; --border: #e5e7eb;
+    --accent: #2563eb; --accent-soft: #eff6ff;
+    --ok: #059669; --ok-soft: #ecfdf5; --warn: #d97706; --warn-soft: #fffbeb;
+    --bad: #dc2626; --bad-soft: #fef2f2; --neutral: #6b7280; --neutral-soft: #f3f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #181b21; --text: #e5e7eb; --muted: #9ca3af; --border: #2a2f38;
+      --accent: #60a5fa; --accent-soft: #1e2a3d;
+      --ok: #34d399; --ok-soft: #10261f; --warn: #fbbf24; --warn-soft: #2a2213;
+      --bad: #f87171; --bad-soft: #2c1616; --neutral: #9ca3af; --neutral-soft: #22262d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg);
+    color: var(--text); line-height: 1.5;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 40px 16px 64px; }
+  header { margin-bottom: 24px; }
+  h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0; font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .card + .card { margin-top: 16px; }
+
+  #drop {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 36px 16px; text-align: center;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  #drop:hover, #drop:focus-visible { border-color: var(--accent); outline: none; }
+  #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  #drop svg { width: 40px; height: 40px; color: var(--accent); margin-bottom: 8px; }
+  #drop .title { font-weight: 600; font-size: 15px; }
+  #drop .title u { color: var(--accent); text-decoration: none; }
+  #drop .hint { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .formats { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .chip {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 3px 8px; border-radius: 6px;
+    background: var(--neutral-soft); color: var(--muted); border: 1px solid var(--border);
+  }
+  input[type=file] { display: none; }
+  #error { color: var(--bad); font-size: 13px; margin-top: 10px; display: none; }
+
+  .checks { margin-top: 18px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 16px; }
+  .checks div { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .checks div::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none;
+  }
+
+  #panel { display: none; }
+  .file-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .file-meta { flex: 1; min-width: 0; }
+  .file-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-size { color: var(--muted); font-size: 12px; }
+  button.secondary {
+    font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .preview-wrap { position: relative; border-radius: 10px; overflow: hidden; background: var(--neutral-soft); }
+  #preview { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+  #scanning {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: 10px;
+    background: rgba(0,0,0,.45); color: #fff; font-weight: 600; font-size: 14px;
+  }
+  #scanning.on { display: flex; }
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #result { display: none; margin-top: 16px; border-radius: 12px; padding: 16px; border: 1px solid; }
+  .CLEAN { background: var(--ok-soft); border-color: var(--ok) !important; --c: var(--ok); }
+  .SUSPICIOUS { background: var(--warn-soft); border-color: var(--warn) !important; --c: var(--warn); }
+  .PHONE { background: var(--bad-soft); border-color: var(--bad) !important; --c: var(--bad); }
+  .ERROR { background: var(--neutral-soft); border-color: var(--neutral) !important; --c: var(--neutral); }
+  .res-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .res-title { font-weight: 700; font-size: 16px; color: var(--c); display: flex; align-items: center; gap: 8px; }
+  .res-title svg { width: 20px; height: 20px; }
+  .res-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .ms { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
+  .section-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 6px; }
+  .phones { display: flex; gap: 6px; flex-wrap: wrap; }
+  .phones code { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>İlan Görsellerinde Telefon Numarası Kontrolü</h1>
+    <p class="sub">İlan fotoğrafına yazılmış telefon numarası olup olmadığını kontrol eder ve bulunan numarayı gösterir.</p>
+  </header>
+
+  <section class="card" id="uploader">
+    <div id="drop" tabindex="0" role="button" aria-label="Fotoğraf yükle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
+      </svg>
+      <div class="title">Fotoğrafı sürükleyip bırakın ya da <u>seçmek için tıklayın</u></div>
+      <div class="hint">Panodan yapıştırmak için Ctrl/⌘ + V de kullanabilirsiniz</div>
+      <div class="formats">
+        <span class="chip">JPG</span><span class="chip">JPEG</span><span class="chip">PNG</span>
+        <span class="chip">WEBP</span><span class="chip">BMP</span>
+      </div>
+    </div>
+    <input type="file" id="file" accept=".jpg,.jpeg,.png,.webp,.bmp,image/jpeg,image/png,image/webp,image/bmp">
+    <div id="error"></div>
+
+    <div class="checks">
+      <div>Cep ve sabit telefon</div>
+      <div>0850 / 0800 / 444 hatları</div>
+      <div>Daire içi / yazıyla rakamlar</div>
+    </div>
+  </section>
+
+  <section class="card" id="panel">
+    <div class="file-row">
+      <div class="file-meta">
+        <div class="file-name" id="fileName"></div>
+        <div class="file-size" id="fileSize"></div>
+      </div>
+      <button class="secondary" id="another" type="button">Başka fotoğraf</button>
+    </div>
+    <div class="preview-wrap">
+      <img id="preview" alt="Yüklenen fotoğraf">
+      <div id="scanning"><div class="spinner"></div>Taranıyor…</div>
+    </div>
+    <div id="result"></div>
+  </section>
+
+  <footer>Tek seferde bir fotoğraf taranır. Sonuç otomatik bir ön değerlendirmedir.</footer>
+</main>
+
+<script>
+const ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'bmp'];
+const DECISIONS = {
+  CLEAN: { label: 'Numara yok', desc: 'Görselde telefon numarası bulunamadı.',
+    icon: '<path d="M20 6 9 17l-5-5"/>' },
+  SUSPICIOUS: { label: 'İncelenmeli', desc: 'Numara izi var ama tam okunamadı, moderatör kontrolü önerilir.',
+    icon: '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' },
+  PHONE: { label: 'Numara bulundu', desc: 'Görselde telefon numarası tespit edildi.',
+    icon: '<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/>' },
+  ERROR: { label: 'Hata', desc: 'Görsel işlenemedi.',
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>' },
+};
+
+const $ = id => document.getElementById(id);
+const drop = $('drop'), fileInput = $('file'), errorEl = $('error');
+const uploader = $('uploader'), panel = $('panel'), preview = $('preview');
+const scanningEl = $('scanning'), resultEl = $('result');
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtSize = b => b < 1024 * 1024 ? (b / 1024).toFixed(0) + ' KB' : (b / 1024 / 1024).toFixed(1) + ' MB';
+
+drop.onclick = () => fileInput.click();
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } };
+fileInput.onchange = () => { if (fileInput.files[0]) handle(fileInput.files[0]); fileInput.value = ''; };
+
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handle(f); });
+
+document.addEventListener('paste', e => {
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+  if (item) handle(item.getAsFile());
+});
+
+$('another').onclick = () => {
+  panel.style.display = 'none';
+  uploader.style.display = 'block';
+  fileInput.click();
+};
+
+function handle(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const typeOk = ALLOWED.some(a => file.type === 'image/' + (a === 'jpg' ? 'jpeg' : a));
+  if (!ALLOWED.includes(ext) && !typeOk) {
+    errorEl.textContent = `Bu dosya türü desteklenmiyor (${ext || file.type || 'bilinmiyor'}). Lütfen JPG, PNG, WEBP veya BMP yükleyin.`;
+    errorEl.style.display = 'block';
+    uploader.style.display = 'block';
+    panel.style.display = 'none';
+    return;
+  }
+  errorEl.style.display = 'none';
+  uploader.style.display = 'none';
+  panel.style.display = 'block';
+  $('fileName').textContent = file.name || 'Yapıştırılan görsel';
+  $('fileSize').textContent = fmtSize(file.size);
+  preview.src = URL.createObjectURL(file);
+  scan(file);
+}
+
+async function scan(file) {
+  resultEl.style.display = 'none';
+  scanningEl.classList.add('on');
+  const form = new FormData();
+  form.append('file', file, file.name || 'paste.png');
+  try {
+    const res = await fetch('/api/scan', { method: 'POST', body: form });
+    if (!res.ok) throw new Error('Sunucu hatası (' + res.status + ')');
+    render(await res.json());
+  } catch (e) {
+    render({ error: e.message || String(e) });
+  } finally {
+    scanningEl.classList.remove('on');
+  }
+}
+
+function render(data) {
+  const status = data.error ? 'ERROR' : data.has_phone ? 'PHONE' : data.suspicious ? 'SUSPICIOUS' : 'CLEAN';
+  const d = DECISIONS[status];
+  const phones = data.phones || [];
+  resultEl.className = status;
+  resultEl.innerHTML = `
+    <div class="res-head">
+      <div>
+        <div class="res-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
+          ${d.label}
+        </div>
+        <div class="res-desc">${data.error ? esc(data.error) : d.desc}</div>
+      </div>
+      ${data.ms ? `<div class="ms" title="Tarama süresi">${data.ms} ms</div>` : ''}
+    </div>
+    ${phones.length ? `<div class="section-label">Tespit edilen numara</div>
+      <div class="phones">${phones.map(p => `<code>${esc(p)}</code>`).join('')}</div>` : ''}`;
+  resultEl.style.display = 'block';
+}
+</script>
+</body>
+</html>

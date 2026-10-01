@@ -1,0 +1,8 @@
+venv311
+__pycache__
+**/__pycache__
+*.pyc
+.git
+testdata
+models
+NOTLAR.md

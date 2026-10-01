@@ -1,0 +1,4 @@
+# Yalnızca model dışa aktarma (python -m app.export_models): Docker build aşaması ve geliştirme.
+paddlepaddle==3.2.2
+paddlex==3.7.2
+paddle2onnx==2.1.0

@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+*.env
+.DS_Store
+.idea/
+.vscode/
+venv311/
+models/
+testdata/
+NOTLAR.md
