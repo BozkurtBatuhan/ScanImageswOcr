@@ -37,11 +37,6 @@ curl http://localhost:8000/health                # {"status":"ok"}
 
 Durdurmak: `docker stop ocr-phone` · yeniden başlatmak: `docker start ocr-phone`
 
-### İnternete açmak (ngrok)
-
-```bash
-ngrok http 8000 --basic-auth="demo:GucluBirSifre123"
-```
 
 ## API
 
